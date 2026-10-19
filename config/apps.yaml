@@ -1,0 +1,342 @@
+# 竞品 App 路径巡检配置文件
+# 适用设备：小米14 Ultra (HyperOS / Android 14+) 或其他 Android 真机
+# 控制端：Mac / PC 宿主机通过 ADB / uiautomator2 驱动真机
+
+defaults:
+  settle_seconds: 2.0
+  action_timeout_seconds: 8.0
+
+  # ==================== 安全控制（绝对底线） ====================
+  # 严禁点击的高危按钮文案：一旦检测到或候选词包含以下内容，绝对禁止点击，立即拦截！
+  prohibited_action_texts:
+    - 提交订单
+    - 立即支付
+    - 确认支付
+    - 立即付款
+    - 确认付款
+    - 去支付
+    - 开通并支付
+    - 极速支付
+    - 免密支付
+    - 确认并支付
+    - 同意协议并支付
+    - 分期支付
+    - 指纹支付
+    - 面容支付
+    - 输入密码
+
+  # 停止巡检的特征文案：在支付方式页/银行卡选择页/收银台页面，检测到以下文案立即捕获快照并正常停止
+  payment_stop_texts:
+    - 收银台
+    - 支付宝收银台
+    - 京东收银台
+    - 抖音支付
+    - 美团支付
+    - 微信支付
+    - 支付宝
+    - 支付方式
+    - 选择支付方式
+    - 选择付款方式
+    - 付款方式
+    - 银行卡
+    - 添加银行卡
+    - 信用卡
+    - 借记卡
+    - 花呗
+    - 花呗分期
+    - 白条
+    - 白条分期
+    - 云闪付
+    - 闪付
+    - 换卡支付
+    - 其他支付方式
+    - 分期免息
+
+  # 敏感输入拦截词：绝对不输入卡号、CVV、密码、验证码
+  sensitive_input_prompts:
+    - 卡号
+    - 银行卡号
+    - 请输入卡号
+    - CVV
+    - 安全码
+    - 有效期
+    - 验证码
+    - 短信验证码
+    - 请输入支付密码
+    - 输入密码
+    - 交易密码
+
+  # 登录与风控保护拦截词：遇到登录拦截、滑动验证、人机验证时立即停止，绝不绕过
+  login_or_risk_texts:
+    - 安全验证
+    - 滑动验证
+    - 拖动滑块
+    - 请完成安全验证
+    - 人机验证
+    - 账号登录
+    - 请先登录
+    - 登录后查看
+    - 快捷登录
+    - 手机号一键登录
+    - 风险提示
+
+  # 启动与交互过程中的通用弹窗清理文案（权限、协议、青少年模式、更新、签到浮层）
+  dismiss_popup_texts:
+    - 跳过
+    - 关闭
+    - 我知道了
+    - 以后再说
+    - 暂不升级
+    - 取消
+    - 忽略
+    - 同意并使用
+    - 同意
+    - 允许
+    - 始终允许
+    - 仅在使用中允许
+    - 放弃优惠
+    - 知道了
+
+  # ==================== 营销信息分类体系 ====================
+  marketing_taxonomy:
+    coupons:
+      - 优惠券
+      - 领券
+      - 满减
+      - 立减
+      - 店铺券
+      - 平台券
+      - 品类券
+      - 折扣券
+      - 减¥
+      - 省¥
+      - 领券立减
+    red_packets:
+      - 红包
+      - 店铺红包
+      - 平台红包
+      - 膨胀红包
+      - 天降红包
+      - 购物津贴
+      - 消费券
+      - 福利金
+    memberships:
+      - 88VIP
+      - PLUS会员
+      - 品牌会员
+      - 粉丝专享
+      - 试用会员
+      - 省钱卡
+      - 神会员
+      - 尊享会员
+      - 会员专享
+      - 会员立省
+    activities_subsidies:
+      - 百亿补贴
+      - 官方立减
+      - 国家补贴
+      - 国补
+      - 以旧换新
+      - 限时秒杀
+      - 限时抢购
+      - 跨店满减
+      - 预售
+      - 拼团
+      - 惊喜券
+      - 超级补贴
+    pricing_prompts:
+      - 到手价
+      - 券后价
+      - 预估到手
+      - 折后价
+      - 补贴价
+      - 促销价
+      - 专享价
+      - 折扣
+      - 免单
+    payment_bank_promos:
+      - 银行卡立减
+      - 信用卡立减
+      - 借记卡立减
+      - 分期免息
+      - 分期优惠
+      - 支付立减
+      - 随机立减
+      - 白条立减
+      - 花呗分期
+      - 笔笔减
+      - 减免
+
+  # 兼容扁平化列表
+  marketing_keywords:
+    - 优惠券
+    - 领券
+    - 满减
+    - 立减
+    - 红包
+    - 会员
+    - 88VIP
+    - PLUS
+    - 省钱卡
+    - 神会员
+    - 免单
+    - 活动
+    - 补贴
+    - 百亿补贴
+    - 国补
+    - 折扣
+    - 到手价
+    - 券后价
+    - 福利
+    - 银行卡立减
+    - 信用卡立减
+    - 分期免息
+
+# ==================== 四款竞品 App 路径配置 ====================
+apps:
+  taobao:
+    display_name: 淘宝
+    package: com.taobao.taobao
+    search_entry_texts:
+      - 搜索
+      - 搜索栏
+      - 搜索商品
+      - 输入你想要的
+      - 寻找宝贝店铺
+      - 寻找宝贝
+    search_entry_ids:
+      - com.taobao.taobao:id/home_searchedit
+      - com.taobao.taobao:id/searchbox
+      - com.taobao.taobao:id/sv_search_view
+      - com.taobao.taobao:id/search_view
+      - com.taobao.taobao:id/search_bar_container
+      - com.taobao.taobao:id/searchEdit
+    buy_texts:
+      - 立即购买
+      - 领券购买
+      - 马上抢
+      - 购买
+    sku_confirm_texts:
+      - 确定
+      - 立即购买
+      - 下一步
+    # 注意：严禁在此配置“提交订单”！仅通过进入确认订单页查看营销信息或寻找支付方式入口
+    checkout_entry_texts:
+      - 结算
+      - 去结算
+    payment_entry_texts:
+      - 支付方式
+      - 付款方式
+      - 银行卡
+      - 收银台
+      - 支付宝
+
+  jd:
+    display_name: 京东
+    package: com.jingdong.app.mall
+    search_entry_texts:
+      - 搜索
+      - 搜索栏
+      - 搜索商品
+      - 搜索框
+      - 全网低价
+    search_entry_ids:
+      - com.jingdong.app.mall:id/box_search
+      - com.jingdong.app.mall:id/search_text
+      - com.jingdong.app.mall:id/as8
+      - com.jingdong.app.mall:id/a8h
+    search_tap_points:
+      - [500, 300]
+    buy_texts:
+      - 立即购买
+      - 领券买
+      - 购买
+    sku_confirm_texts:
+      - 确定
+      - 立即购买
+    checkout_entry_texts:
+      - 去结算
+      - 结算
+    payment_entry_texts:
+      - 支付方式
+      - 在线支付
+      - 收银台
+      - 银行卡
+      - 白条
+
+  douyin:
+    display_name: 抖音
+    package: com.ss.android.ugc.aweme
+    reset_back_presses: 1
+    search_entry_texts:
+      - 搜索
+      - 搜索商品
+      - 搜索商品名称
+      - 抖音商城
+    search_entry_ids:
+      - com.ss.android.ugc.aweme:id/et_search_kw
+      - com.ss.android.ugc.aweme:id/search_icon
+      - com.ss.android.ugc.aweme:id/icon_search
+    # Douyin's product grid is partly canvas-backed; this is a safe fallback
+    # for the first product card on the 1080x2400 Xiaomi screen.
+    product_tap_points:
+      - [250, 1150]
+    buy_tap_points:
+      - [850, 2180]
+    search_tab_texts:
+      - 商品
+    buy_texts:
+      - 立即购买
+      - 领券购买
+      - 购买
+    sku_confirm_texts:
+      - 确定
+      - 立即购买
+    checkout_entry_texts:
+      - 去结算
+      - 结算
+    payment_entry_texts:
+      - 支付方式
+      - 付款方式
+      - 抖音支付
+      - 银行卡
+      - 收银台
+
+  meituan:
+    display_name: 美团
+    package: com.sankuai.meituan
+    # 门店页常是 WebView/Canvas，展开优惠券会触发较慢的 UI RPC；页面快照
+    # 已经能提取营销文案，因此跳过这一步以提升串行巡检稳定性。
+    skip_coupon_expand: true
+    search_entry_texts:
+      - 搜索
+      - 搜索商品
+      - 搜索门店
+      - 找好店
+      - 美团买菜
+    search_entry_ids:
+      - com.sankuai.meituan:id/search_edit
+      - com.sankuai.meituan:id/home_search_bar
+      - com.sankuai.meituan:id/search_layout_area
+    buy_texts:
+      - 立即购买
+      - 立即抢购
+      - 购买
+      - 去结算
+      - 去买单
+    # 美团门店商品列表的加购按钮有时是图片/Canvas，不出现在 UI 树中。
+    buy_tap_points:
+      - [1000, 1320]
+    sku_confirm_texts:
+      - 确定
+      - 选好了
+      - 立即购买
+    checkout_entry_texts:
+      - 去结算
+      - 结算
+    payment_entry_texts:
+      - 支付方式
+      - 付款方式
+      - 美团支付
+      - 收银台
+      - 银行卡
