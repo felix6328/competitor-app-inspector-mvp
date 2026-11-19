@@ -208,6 +208,30 @@ cp -R outputs/20261020_000000 baseline
 python report.py outputs/20261020_000000 --baseline baseline --query "洗衣液"
 ```
 
+`device_env.json` 里没有的机型、分辨率和系统版本会写成「缺失」，不会用项目文档中的目标机型填上。
+
+## 日报、变化摘要与深度专题
+
+`report.md` 是日报。它记录状态、营销命中、证据等级，以及有基线时的文件级差异。有视觉哈希或营销文案集合差异时，日报只标记「可考虑人工专题」。dHash 相似度用来排序，不是改版结论。
+
+深度专题是人工文档，只在一条旅程值得展开时撰写，不随每次巡检自动生成。写法、模板和最小校验：
+
+- [分析指南](docs/analysis/分析指南.md)
+- [深度报告模板](docs/analysis/深度报告模板.md)
+- [输出契约](docs/analysis/输出契约.md)
+- [合成演示范例](docs/examples/深度报告范例-合成演示.md)
+- [新旧差异与最短复用指南](docs/analysis/新旧差异与复用指南.md)
+
+仓库没有提交真机截图或基线。范例里的澄市、邻时和人物林可是合成演示，用来展示深度写法，不是淘宝、京东、抖音或美团的实测表现。
+
+本地校验不连接设备、不调用外部接口：
+
+```bash
+python -m unittest discover -s tests -t . -v
+python analysis_contract.py check docs/examples/深度报告范例-合成演示.md
+python analysis_contract.py check --kind template docs/analysis/深度报告模板.md
+```
+
 ## 定时运行
 
 项目可以通过 macOS `launchd`、`cron` 或 Windows Task Scheduler 调度。定时运行前请确认：
@@ -247,8 +271,13 @@ python -m weditor
 .
 ├── config/apps.yaml       # 平台包名、选择器、营销词典与安全规则
 ├── runner.py              # 路径执行、设备连接、证据采集与安全拦截
-├── report.py              # Markdown/JSON 报告与基线差异分析
+├── report.py              # Markdown/JSON 日报、基线差异与证据等级
+├── evidence.py            # 离线证据分级：可引用、只描述标记、拒绝推断
+├── analysis_contract.py   # 深度报告与模板的最小结构校验
 ├── preflight.py           # 依赖、ADB、设备和 App 预检
+├── docs/analysis/         # 分析指南、模板、输出契约、复用说明
+├── docs/examples/         # 合成演示深度报告（非实测）
+├── tests/                 # 离线单测，不连接真机
 ├── bootstrap_mac.sh       # macOS 虚拟环境与依赖初始化
 ├── run_inspection.sh      # 预检并启动巡检
 ├── requirements.txt       # Python 依赖
@@ -262,7 +291,9 @@ python -m weditor
 - 当前依赖真实 Android 设备、官方 App 和稳定的 ADB 连接。
 - App 页面、资源 ID、文案和风控策略变化会导致选择器需要维护。
 - 当前结果是路径级证据和启发式营销信号，不等同于完整的价格、库存或优惠核验。
-- 不保证覆盖所有账号分层、地域、灰度实验和个性化推荐结果。
+- 日报里的证据等级会拒绝一部分推断：登录阻塞、坐标兜底、支付泛词、权益按钮误点、缺失步骤，都不能写成产品结论。
+- 仓库内没有可引用的真机界面。竞品视觉和交互判断必须另附当次截图与 UI 树；没有这些文件时，只能使用标明「合成演示 / 非实测」的写法样例。
+- 不保证覆盖所有账号分层、地域、灰度实验和个性化推荐结果。运行记录里没有实验分组字段，页面差异不能归因到 A/B。
 - 后续可以增加多设备矩阵、更多平台、HTML 报告、差异通知和脱敏导出能力。
 
 ## 许可证与使用责任

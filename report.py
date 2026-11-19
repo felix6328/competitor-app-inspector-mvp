@@ -19,6 +19,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from evidence import assess_app_dir
+
 # Optional Pillow for perceptual image diff (dHash)
 try:
     from PIL import Image
@@ -73,6 +75,16 @@ def compute_dhash(img_path: Path) -> str | None:
             return f"{val:016x}"
     except Exception:
         return None
+
+
+def _shown(value: Any, missing: str = "缺失") -> str:
+    """Show a recorded value. Blank and unknown stay missing instead of a guessed default."""
+    if value is None:
+        return missing
+    text = str(value).strip()
+    if not text or text.lower() == "unknown":
+        return missing
+    return text
 
 
 def calculate_similarity(h1: str, h2: str) -> float:
@@ -255,6 +267,64 @@ def parse_app_status(app_dir: Path) -> tuple[str, str, float]:
     return status, stop_reason, duration
 
 
+def _render_evidence_section(blocks: list[dict[str, Any]]) -> list[str]:
+    """Render the daily-report boundary. This is not a deep product analysis."""
+    lines = [
+        "## 五、证据质量与推断边界",
+        "",
+        "本段只根据本次目录里的文件和动作日志生成，不补充界面事实。",
+        "证据等级决定这些句子能不能被写进深度专题。",
+        "",
+        "| 等级 | 可以写什么 |",
+        "| :--- | :--- |",
+        "| 可引用，但须附原始文件并遵守限度 | 步骤文件成对，且没有登录阻塞、坐标兜底、泛支付词或权益按钮误点。引用时写上截图与 UI 树文件名。 |",
+        "| 只可描述采集标记 | 可以写工具遇到了什么标记。不能把该次路径写成用户会这样走，也不能写视觉层级。 |",
+        "| 拒绝产品推断 | 没有可阅读证据，或失败发生在任何截图和 UI 树之前。不能回答体验问题。 |",
+        "",
+    ]
+    if not HAS_PILLOW:
+        lines.append("Pillow 未启用。视觉差异只比较文件哈希，dHash 相似度记为缺失，不能描述画面哪一块变了。")
+        lines.append("")
+    if not blocks:
+        lines.append("本次目录没有平台子目录，不能生成体验结论。")
+        lines.append("")
+        return lines
+
+    for block in blocks:
+        assessment = block["assessment"]
+        lines.append(f"### {assessment['app']}")
+        lines.append("")
+        lines.append(f"- **证据等级**：{assessment['grade_label']}（`{assessment['grade']}`）")
+        flag_text = "、".join(assessment["flag_labels"]) if assessment["flag_labels"] else "无"
+        lines.append(f"- **标记**：{flag_text}")
+        lines.append(f"- **结束状态**：`{assessment['result_status']}`")
+        lines.append(f"- **停止原因**：{assessment['result_stop_reason']}")
+        if assessment["missing_core_steps"]:
+            missing = "、".join(f"`{name}`" for name in assessment["missing_core_steps"])
+            lines.append(f"- **缺失的核心步骤**：{missing}")
+        if assessment["refusals"]:
+            lines.append("- **拒绝推断**：")
+            for item in assessment["refusals"]:
+                lines.append(f"  - {item}")
+        lines.append("- **常驻限度**：")
+        for item in assessment["standing_limits"]:
+            lines.append(f"  - {item}")
+        if block["change_clue"]:
+            lines.append("- **变化线索**：相对基线存在视觉哈希或营销文案集合差异，可考虑人工专题。相似度数字不是改版结论。")
+        elif "baseline_present" in assessment["flags"]:
+            lines.append("- **变化线索**：已对比基线，这次没有形成视觉哈希或营销文案集合差异。这不等于产品没有改版。")
+        else:
+            lines.append("- **变化线索**：没有可对比基线，不写本期变化。")
+        lines.append("")
+
+    lines.extend([
+        "日报到此为止。深度专题按 `docs/analysis/深度报告模板.md` 另写，不在每次巡检时生成长文。",
+        "最小校验：`python analysis_contract.py check docs/examples/深度报告范例-合成演示.md`。",
+        "",
+    ])
+    return lines
+
+
 def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗衣液") -> Path:
     """Generate Markdown and JSON reports for a completed run directory."""
     device_json = run_dir / "device_env.json"
@@ -267,28 +337,56 @@ def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗�
 
     dev = env_data.get("device", {})
     host = env_data.get("host", {})
+    brand = _shown(dev.get("brand"))
+    model = _shown(dev.get("model") or dev.get("marketname"))
+    if brand == "缺失" and model == "缺失":
+        device_line = "缺失。未在 device_env.json 中记录机型，不使用项目文档里的目标机型填充。"
+    else:
+        device_line = " / ".join(part for part in (brand, model) if part != "缺失")
+    host_system = _shown(host.get("system"))
+    host_release = _shown(host.get("release"))
+    host_cell = host_system if host_release == "缺失" else f"{host_system} {host_release}"
+    os_bits: list[str] = []
+    hyper = _shown(dev.get("hyperos_version"))
+    android = _shown(dev.get("android_version"))
+    if hyper != "缺失":
+        os_bits.append(f"HyperOS {hyper}")
+    if android != "缺失":
+        os_bits.append(f"Android {android}")
+    os_cell = "；".join(os_bits) if os_bits else "缺失"
+    screen_size = _shown(dev.get("screen_size"))
+    screen_dpi = _shown(dev.get("screen_density"))
+    if screen_size == "缺失" and screen_dpi == "缺失":
+        screen_cell = "缺失"
+    else:
+        screen_cell = f"{screen_size} / DPI {screen_dpi}"
 
     lines: list[str] = [
-        "# 竞品 App 路径巡检报告 (Xiaomi 14 Ultra 真机)",
+        "# 竞品 App 路径巡检报告",
         "",
         f"- **生成时间**：{datetime.now().astimezone().isoformat(timespec='seconds')}",
         f"- **巡检商品关键词**：`{query}`",
         f"- **运行目录**：`{run_dir.name}`",
-        f"- **基线对比**：`{baseline_dir.name if baseline_dir else '无 (首次运行)'}`",
+        f"- **基线对比**：`{baseline_dir.name if baseline_dir else '无。本次不写相对上期的变化。'}`",
+        f"- **被测机型**：{device_line}",
         "",
         "> [!IMPORTANT]",
         "> **安全合规声明**：本巡检严格限定在公开页面浏览与营销信息抓取。到达银行卡/支付方式选择页或收银台时**立即主动停止**。全程**绝不输入**卡号、CVV、短信验证码、支付密码，**绝不点击**提交订单或确认支付按钮，**绝不绕过**登录与风控验证。",
         "",
+        "> **报告角色**：这是单次运行的日报和变化摘要。它记录采集状态、营销命中、证据等级，以及有基线时的文件级差异。它不给竞品打分，也不代替深度专题。深度专题见 `docs/analysis/深度报告模板.md`。没有本次截图和 UI 树时，不能补写界面结论。",
+        "",
         "## 一、运行环境与被测设备",
         "",
-        "| 项目 | 属性配置 | 说明 |",
+        "下表只转写 `device_env.json` 里已经记录的值。某一格为「缺失」时，表示这次没有采集到。",
+        "",
+        "| 项目 | 记录值 | 来源 |",
         "| :--- | :--- | :--- |",
-        f"| **宿主控制机 (Host)** | `{host.get('system', 'Mac/PC')} ({host.get('release', '')})` | 运行 Python / runner.py |",
-        f"| **被测真机 (DUT)** | `Xiaomi 14 Ultra` (`{dev.get('model', '24030PN60C')}`) | USB 调试受控手机 |",
-        f"| **操作系统** | `Xiaomi HyperOS` (`{dev.get('hyperos_version', 'OS1.0')}`) / Android `{dev.get('android_version', '14')}` | 小米澎湃 OS |",
-        f"| **屏幕分辨率/DPI** | `{dev.get('screen_size', '1440x3200')}` (DPI: `{dev.get('screen_density', 560)}`) | 超高分辨率真机屏幕 |",
-        f"| **设备序列号 (Serial)** | `{dev.get('connected_serial', 'USB连接')}` | ADB 连接通道 |",
-        f"| **感知比对引擎** | `{'Pillow (dHash 感知哈希已启用)' if HAS_PILLOW else 'SHA256 (Pillow未安装)'}` | 视觉差异检测 |",
+        f"| **宿主控制机** | `{host_cell}` | device_env.json → host |",
+        f"| **被测设备** | `{device_line if brand != '缺失' or model != '缺失' else '缺失'}` | device_env.json → device |",
+        f"| **操作系统** | `{os_cell}` | device_env.json → device |",
+        f"| **屏幕分辨率/DPI** | `{screen_cell}` | device_env.json → device |",
+        f"| **设备序列号** | `{_shown(dev.get('connected_serial'))}` | device_env.json → device.connected_serial |",
+        f"| **感知比对引擎** | `{'Pillow dHash 已启用' if HAS_PILLOW else '仅 SHA256。Pillow 未安装，dHash 相似度缺失'}` | 运行环境 |",
         "",
         "## 二、巡检概览汇总",
         "",
@@ -334,6 +432,7 @@ def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗�
     lines.append("## 三、各 App 详细巡检结果与营销提取")
     lines.append("")
 
+    evidence_blocks: list[dict[str, Any]] = []
     for app_dir in app_dirs:
         lines.append(f"### 📱 {app_dir.name}")
         lines.append("")
@@ -390,9 +489,11 @@ def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗�
                     lines.append("")
 
         # Baseline comparison per app
+        change_clue = False
         if baseline_dir:
             base_app_dir = baseline_dir / app_dir.name
             comp = compare_with_baseline(app_dir, base_app_dir)
+            change_clue = bool(comp["has_baseline"] and (comp["visual_diffs"] or comp["marketing_diffs"]))
             lines.append(f"#### 🔄 Baseline 差异对比 (对比基线: `{baseline_dir.name}`)")
             lines.append("")
             if not comp["has_baseline"]:
@@ -406,7 +507,7 @@ def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗�
                         lines.append(f"- 步骤 `{vd['step']}`: 画面已变更{sim_str} [当前SHA: `{vd['curr_sha']}` vs 基线SHA: `{vd['old_sha']}`]")
                     lines.append("")
                 else:
-                    lines.append("- **视觉画面**：与基线完全一致，未发现视觉变动。")
+                    lines.append("- **视觉画面**：已比较的同名步骤没有文件哈希变化。未进入比较的步骤不会出现在这里。")
 
                 # Text diffs
                 if comp["text_diffs"]:
@@ -417,16 +518,19 @@ def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗�
                         lines.append(f"- 步骤 `{td['step']}`: {add_text} {'| ' if add_text and rem_text else ''}{rem_text}")
                     lines.append("")
                 else:
-                    lines.append("- **UI 文本**：所有步骤文本与基线保持一致。")
+                    lines.append("- **UI 文本**：已比较的同名步骤没有文本集合差异。")
 
                 # Marketing diffs
                 if comp["marketing_diffs"]:
                     lines.append("**营销活动与优惠变动**：")
                     for md in comp["marketing_diffs"]:
                         new_p = f"新增优惠: `{', '.join(md['new_promos'])}`" if md['new_promos'] else ""
-                        lost_p = f"失效优惠: `{', '.join(md['lost_promos'])}`" if md['lost_promos'] else ""
+                        lost_p = f"本次未再现: `{', '.join(md['lost_promos'])}`" if md['lost_promos'] else ""
                         lines.append(f"- 步骤 `{md['step']}`: {new_p} {'| ' if new_p and lost_p else ''}{lost_p}")
                     lines.append("")
+
+        assessment = assess_app_dir(app_dir, baseline_dir)
+        evidence_blocks.append({"assessment": assessment, "change_clue": change_clue})
 
         lines.append("---")
         lines.append("")
@@ -436,8 +540,10 @@ def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗�
     lines.append("")
     lines.append("1. **A/B 实验与文案漂移**：若某 App 在某步骤报 `找不到购买按钮` 或 `找不到搜索框`，请查看对应步骤的 `.xml` 文件，在 `config/apps.yaml` 中将新出现的按钮文案添加至候选列表。")
     lines.append("2. **小米 HyperOS 权限**：若遇到点击无效，请进入手机【设置】->【更多设置】->【开发者选项】，确保【USB 调试（安全设置）】处于开启状态。")
-    lines.append("3. **定期巡检与基线维护**：巡检通过后，可将当前目录命名为 `baseline`。下一次巡检加上 `--baseline baseline` 即可自动追踪各 App 营销策略与页面布局的迭代演进。")
+    lines.append("3. **定期巡检与基线维护**：巡检通过后，可将当前目录命名为 `baseline`。下一次巡检加上 `--baseline baseline` 即可自动追踪各 App 营销策略与页面布局的迭代演进。文件哈希和 dHash 相似度只是变化线索，不是改版结论。")
+    lines.append("4. **证据不够时停止解释**：第五节若给出拒绝推断，就不要把缺失步骤、坐标落点、登录后页面或支付泛词写成产品结论。深度写法见 `docs/analysis/分析指南.md`。")
     lines.append("")
+    lines.extend(_render_evidence_section(evidence_blocks))
 
     report_md = run_dir / "report.md"
     report_md.write_text("\n".join(lines), encoding="utf-8")
@@ -450,7 +556,21 @@ def generate(run_dir: Path, baseline_dir: Path | None = None, query: str = "洗�
         "baseline_dir": str(baseline_dir) if baseline_dir else None,
         "query": query,
         "environment": env_data,
-        "summary": summary_data
+        "summary": summary_data,
+        "evidence": [
+            {
+                "app": block["assessment"]["app"],
+                "grade": block["assessment"]["grade"],
+                "flags": block["assessment"]["flags"],
+                "refusals": block["assessment"]["refusals"],
+                "standing_limits": block["assessment"]["standing_limits"],
+                "missing_core_steps": block["assessment"]["missing_core_steps"],
+                "result_status": block["assessment"]["result_status"],
+                "change_clue": block["change_clue"],
+            }
+            for block in evidence_blocks
+        ],
+        "report_role": "daily_change_summary",
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return report_md
