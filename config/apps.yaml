@@ -246,6 +246,7 @@ apps:
       - com.jingdong.app.mall:id/as8
       - com.jingdong.app.mall:id/a8h
     search_tap_points:
+      # 未绑定分辨率，仓库里也没有该点命中搜索框的截图。
       - [500, 300]
     buy_texts:
       - 立即购买
@@ -277,11 +278,13 @@ apps:
       - com.ss.android.ugc.aweme:id/et_search_kw
       - com.ss.android.ugc.aweme:id/search_icon
       - com.ss.android.ugc.aweme:id/icon_search
-    # Douyin's product grid is partly canvas-backed; this is a safe fallback
-    # for the first product card on the 1080x2400 Xiaomi screen.
+    # 商品卡有一部分是画布，语义节点点不到时才用坐标兜底。
+    # 下面的点来自一份 1080x2400 的注释，和 README 里的 1440x3200 目标机不是同一套分辨率。
+    # 仓库没有该坐标命中商品卡的截图。真正用到坐标时，日报会把这次降为“只可描述采集标记”。
     product_tap_points:
       - [250, 1150]
     buy_tap_points:
+      # 未按 README 中的 1440x3200 目标分辨率复核，仓库内无命中截图。
       - [850, 2180]
     search_tab_texts:
       - 商品
@@ -324,7 +327,8 @@ apps:
       - 购买
       - 去结算
       - 去买单
-    # 美团门店商品列表的加购按钮有时是图片/Canvas，不出现在 UI 树中。
+    # 美团门店商品列表的加购按钮有时是图片或画布，不出现在 UI 树中。
+    # 该坐标未绑定分辨率，仓库里没有命中截图。用到它时不能写成用户选择。
     buy_tap_points:
       - [1000, 1320]
     sku_confirm_texts:
